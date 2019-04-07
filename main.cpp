@@ -165,6 +165,10 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 				terrain.p[ramka.nr_przedmiotu].do_wziecia = 0;
 				terrain.p[ramka.nr_przedmiotu].czy_ja_wzialem = 0;
 			}
+
+			if (my_vehicle->IsInCooperation() && ramka.iID == my_vehicle->ID_koalicjanta) {
+				my_vehicle->pieniadze = ramka.stan.pieniadze;
+			}
 			break;
 		}
 		case ODNOWIENIE_SIE_PRZEDMIOTU:       // ramka informujaca, ¿e przedmiot wczeœniej wziêty pojawi³ siê znowu w tym samym miejscu
@@ -187,7 +191,7 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 			if (ramka.iID_adresata == my_vehicle->iID)  // ID pojazdu, ktory otrzymal przelew zgadza siê z moim ID 
 			{
 				if (ramka.typ_przekazu == GOTOWKA) {
-					my_vehicle->pieniadze += ramka.wartosc_przekazu;
+					my_vehicle->pieniadze += ramka.wartosc_przekazu;	
 				}
 				else if (ramka.typ_przekazu == PALIWO)
 					my_vehicle->ilosc_paliwa += ramka.wartosc_przekazu;
@@ -215,6 +219,7 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 				string asd = ss.str();
 				SetWindowText(okno, asd.c_str());
 			}
+			break;
 		}
 		case WSPOLPRACA_OK:
 		{
@@ -226,6 +231,7 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 				my_vehicle->OwnObjectColorCooperation[1] = mo->OwnObjectColorCooperation[1];
 				my_vehicle->OwnObjectColorCooperation[2] = mo->OwnObjectColorCooperation[2];
 			}
+			break;
 		}
 		} // switch po typach ramek
 		//Release the Critical section
@@ -366,32 +372,23 @@ void WyslanieProsbyOWspolprace()
 }
 
 void ZwrotnaProsbaOWspolprace() {
-	
 	//if (network_vehicles[cooperationId] != NULL) {
-
 		Ramka ramka;
 		ramka.typ_ramki = WSPOLPRACA_ZWROTNA;
 		ramka.iID = my_vehicle->iID;
 		ramka.iID_adresata = cooperationId;
 		int iRozmiar = multi_send->send((char*)&ramka, sizeof(Ramka));
-
-		my_vehicle->ID_koalicjanta = cooperationId;
 	//}
-	cooperationId = 0;
-	cooperationFlag = false;
 }
 
 void AkceptacjaWspolpracy() {
-
 	//if (network_vehicles[cooperationId] != NULL) {
-
 	Ramka ramka;
 	ramka.typ_ramki = WSPOLPRACA_OK;
 	ramka.iID = my_vehicle->iID;
 	ramka.iID_adresata = cooperationId;
 	int iRozmiar = multi_send->send((char*)&ramka, sizeof(Ramka));
 
-	my_vehicle->ID_koalicjanta = cooperationId;
 	//}
 	cooperationId = 0;
 	cooperationFlag = false;
