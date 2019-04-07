@@ -76,7 +76,7 @@ int opoznienia = 0;
 extern float WyslaniePrzekazu(int ID_adresata, int typ_przekazu, float wartosc_przekazu);
 
 enum typy_ramek {
-	STAN_OBIEKTU, WZIECIE_PRZEDMIOTU, ODNOWIENIE_SIE_PRZEDMIOTU, KOLIZJA, PRZEKAZ, WSPOLPRACA, WSPOLPRACA_OK
+	STAN_OBIEKTU, WZIECIE_PRZEDMIOTU, ODNOWIENIE_SIE_PRZEDMIOTU, KOLIZJA, PRZEKAZ, WSPOLPRACA, WSPOLPRACA_ZWROTNA, WSPOLPRACA_OK
 };
 
 enum typy_przekazu { GOTOWKA, PALIWO };
@@ -186,8 +186,9 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 		{
 			if (ramka.iID_adresata == my_vehicle->iID)  // ID pojazdu, ktory otrzymal przelew zgadza siê z moim ID 
 			{
-				if (ramka.typ_przekazu == GOTOWKA)
+				if (ramka.typ_przekazu == GOTOWKA) {
 					my_vehicle->pieniadze += ramka.wartosc_przekazu;
+				}
 				else if (ramka.typ_przekazu == PALIWO)
 					my_vehicle->ilosc_paliwa += ramka.wartosc_przekazu;
 
@@ -205,6 +206,15 @@ DWORD WINAPI WatekOdbioru(void *ptr)
 			SetWindowText(okno, asd.c_str());
 			//}
 			break;
+		}
+		case WSPOLPRACA_ZWROTNA:
+		{
+			if (ramka.iID_adresata == my_vehicle->iID) {
+				std::stringstream ss;
+				ss << "Gracz o id=" << ramka.iID << " jest chetny do wspolpracy. Zaakceptowac?";
+				string asd = ss.str();
+				SetWindowText(okno, asd.c_str());
+			}
 		}
 		case WSPOLPRACA_OK:
 		{
@@ -355,17 +365,33 @@ void WyslanieProsbyOWspolprace()
 	int iRozmiar = multi_send->send((char*)&ramka, sizeof(Ramka));
 }
 
-void AkceptacjaWspolpracy() {
+void ZwrotnaProsbaOWspolprace() {
 	
 	//if (network_vehicles[cooperationId] != NULL) {
 
 		Ramka ramka;
-		ramka.typ_ramki = WSPOLPRACA_OK;
+		ramka.typ_ramki = WSPOLPRACA_ZWROTNA;
 		ramka.iID = my_vehicle->iID;
 		ramka.iID_adresata = cooperationId;
 		int iRozmiar = multi_send->send((char*)&ramka, sizeof(Ramka));
 
 		my_vehicle->ID_koalicjanta = cooperationId;
+	//}
+	cooperationId = 0;
+	cooperationFlag = false;
+}
+
+void AkceptacjaWspolpracy() {
+
+	//if (network_vehicles[cooperationId] != NULL) {
+
+	Ramka ramka;
+	ramka.typ_ramki = WSPOLPRACA_OK;
+	ramka.iID = my_vehicle->iID;
+	ramka.iID_adresata = cooperationId;
+	int iRozmiar = multi_send->send((char*)&ramka, sizeof(Ramka));
+
+	my_vehicle->ID_koalicjanta = cooperationId;
 	//}
 	cooperationId = 0;
 	cooperationFlag = false;
@@ -815,11 +841,19 @@ void KlawiszologiaSterowania(UINT kod_meldunku, WPARAM wParam, LPARAM lParam)
 		{
 			if (my_vehicle->IsInCooperation()) {
 				SetWindowText(okno, "Jesteś juz w kooperacji!");
+				return;
 			}
 			sprintf(par_wid.napis2, "rozpoczecie_interakcji_zespolowej");
 			WyslanieProsbyOWspolprace();
 
 			break;
+		}
+		case 'B': {
+			if (my_vehicle->IsInCooperation()) {
+				SetWindowText(okno, "Jesteś juz w kooperacji!");
+				return;
+			}
+			AkceptacjaWspolpracy();
 		}
 		case 'O': //wpisanie id kooperacji
 		{
@@ -833,7 +867,7 @@ void KlawiszologiaSterowania(UINT kod_meldunku, WPARAM wParam, LPARAM lParam)
 		case 'I': //akceptacja interakcji zespolowej 
 		{
 			SetWindowText(okno, "Zaakceptowano gracza do wspolpracy!");
-			AkceptacjaWspolpracy();
+			ZwrotnaProsbaOWspolprace();
 
 			break;
 		}
