@@ -7,7 +7,7 @@
 *.o
 *.obj
 *.opendb
-
+.vs/
 # Precompiled Headers
 *.gch
 *.pch
